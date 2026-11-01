@@ -50,15 +50,9 @@
       <div class="add-buttons"><button id="addText">＋ 言葉（50字）</button><button id="addLongText">＋ テキスト（300字）</button><button id="addPhoto">＋ 写真</button></div>
       <input class="file-input" id="photoInput" type="file" accept="image/*">
       <div class="grid" style="margin-top:14px">
-        <div><label class="field-title" for="fontSelect">言葉カードの書体</label><select id="fontSelect"><option value="Shippori Mincho">しっぽり明朝</option><option value="Noto Sans JP">Noto Sans JP</option><option value="Yomogi">よもぎ・手書き風</option><option value="Yuji Syuku">Yuji Syuku</option><option value="Yuji Boku">Yuji Boku・筆文字</option><option value="Kaisei Tokumin">解星特ミン</option><option value="Sawarabi Mincho">さわらび明朝</option><option value="Zen Kurenaido">Zen くれないど</option><option value="Murecho">ムレチョ・ゴシック</option></select></div>
-        <div><label class="field-title" for="writing">言葉カードの向き</label><select id="writing"><option value="horizontal">横書き</option><option value="vertical">縦書き</option></select></div>
       </div>
       <div class="grid">
-        <div><label class="field-title" for="fontSize">文字の大きさ <span id="fontSizeValue">24px</span></label><input id="fontSize" type="range" min="14" max="44" value="24"></div>
-        <div><label class="field-title" for="fontWeight">文字の太さ</label><select id="fontWeight"><option value="400">標準</option><option value="600">やや太め</option><option value="700">太字</option></select></div>
       </div>
-      <label class="field-title" for="textAlignment">言葉の位置</label><select id="textAlignment"><option value="center">中央ぞろえ</option><option value="left">左寄り</option><option value="right">右寄り</option></select>
-
       <p class="note" style="margin-top:5px">選んだ演出は、スライドに登場するすべてのカードに同じように適用されます。</p><div class="actions"><button class="secondary" id="exportButton">写真（PNG）作成</button></div><div class="actions"></div><div class="actions"><button class="secondary" id="exportPdfButton">PDFを作成（全ページ）</button></div>
       <div class="actions"><button class="secondary" id="clearButton">このページを空にする</button></div>
       <p class="note">カードの内容はこのブラウザー内で処理します。画像はサーバーへ送信されません。1ページにつき最大9枚、ページを追加して複数ページのアルバムを作れます。PDFは全ページを1つにまとめて保存します。</p>
@@ -74,16 +68,202 @@
   const state={pages:[{cards:[],slots:5,layout:null}],activePage:0,urls:[]}; Object.defineProperty(state,"cards",{get(){return this.pages[this.activePage].cards},set(value){this.pages[this.activePage].cards=value}});
   const screen=$("#screen"),grid=$("#finalGrid"),status=$("#status");
   const fonts={"Shippori Mincho":"'Shippori Mincho',serif","Noto Sans JP":"'Noto Sans JP',sans-serif","Yomogi":"'Yomogi',cursive","Yuji Syuku":"'Yuji Syuku',serif","Yuji Boku":"'Yuji Boku',serif","Kaisei Tokumin":"'Kaisei Tokumin',serif","Sawarabi Mincho":"'Sawarabi Mincho',serif","Zen Kurenaido":"'Zen Kurenaido',sans-serif","Murecho":"'Murecho',sans-serif"};
+  function getDefaultTextSettings(){
+  return {
+    writing: "horizontal",
+    fontSize: 24,
+    fontWeight: "400",
+    alignment: "center",
+    font: "Shippori Mincho"
+  };
+}
   const palettes={ivory:{stage:"#eee8de",glow:"#fffefa",paper:"#fffdf8",ink:"#383229",envelopeLight:"#e9dbc2",envelopeDark:"#d7c3a3",envelopeFold:"#cdb994",envelopeFlap:"#e6d6b9"},blush:{stage:"#f0e5e3",glow:"#fff9f7",paper:"#fffaf8",ink:"#493532",envelopeLight:"#ead1cc",envelopeDark:"#d6b0ad",envelopeFold:"#c99d9a",envelopeFlap:"#ecd6d2"},sky:{stage:"#e8eff1",glow:"#f9fdff",paper:"#fbfeff",ink:"#293b42",envelopeLight:"#d4e3e8",envelopeDark:"#b7ccd3",envelopeFold:"#a8c0c9",envelopeFlap:"#e1edf0"},sage:{stage:"#e9eee8",glow:"#fbfdf9",paper:"#fbfdf9",ink:"#2d392e",envelopeLight:"#d1dece",envelopeDark:"#b2c4b0",envelopeFold:"#9eb29c",envelopeFlap:"#e0e9dc"},lilac:{stage:"#efebf3",glow:"#fdfbff",paper:"#fdfbff",ink:"#383344",envelopeLight:"#ded4e5",envelopeDark:"#c4b5d1",envelopeFold:"#b4a3c3",envelopeFlap:"#e9e1ef"},sand:{stage:"#f1ede4",glow:"#fffdf6",paper:"#fffdf6",ink:"#40392e",envelopeLight:"#ded1b8",envelopeDark:"#c8b591",envelopeFold:"#b39e78",envelopeFlap:"#e9dec9"},night:{stage:"#e7eaf0",glow:"#f7f9fc",paper:"#fcfdff",ink:"#263047",envelopeLight:"#56647e",envelopeDark:"#35425c",envelopeFold:"#28344a",envelopeFlap:"#66738b"},plum:{stage:"#eee9ed",glow:"#fdfafd",paper:"#fffafd",ink:"#392a36",envelopeLight:"#806a7b",envelopeDark:"#5b4658",envelopeFold:"#483548",envelopeFlap:"#947f90"}};
   function applyPalette(){const p=palettes[$("#palette").value]||palettes.ivory;screen.style.setProperty("--stage-bg",p.stage);screen.style.setProperty("--stage-glow",p.glow);screen.style.setProperty("--card-paper",p.paper);renderFinalGrid()}
   function safeText(value,limit=300){return String(value||"").slice(0,limit)}
   function openTextEditor(index=null,newType="text"){
-    const editing=index!==null,cardType=editing?state.cards[index].type:newType,isLong=cardType==="longText",cardLabel=isLong?"テキストカード":"言葉カード",limit=isLong?300:50,overlay=document.createElement("div");overlay.className="modal open";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label",editing?cardLabel+"を修正":cardLabel+"をつくる");
-    const box=document.createElement("div");box.className="modal-box";box.style.width="min(480px,100%)";const heading=document.createElement("div");heading.className="modal-head";const title=document.createElement("strong");title.textContent=editing?cardLabel+"を修正":cardLabel+"をつくる";const close=document.createElement("button");close.type="button";close.textContent="閉じる";heading.append(title,close);
-    const label=document.createElement("label");label.className="field-title";label.textContent=isLong?"カードに載せる文章":"カードに載せる言葉";const area=document.createElement("textarea");area.maxLength=limit;area.value=editing?state.cards[index].text:"";area.placeholder=isLong?"ここに文章を入力してください。\n改行もできます（300字まで）。":"ここに言葉を入力してください（50字まで）。";area.setAttribute("aria-label",label.textContent);area.style.minHeight=isLong?"220px":"140px";const count=document.createElement("div");count.className="count";count.textContent=`${area.value.length} / ${limit}`;
-    const actions=document.createElement("div");actions.className="actions";const cancel=document.createElement("button");cancel.type="button";cancel.className="secondary";cancel.textContent="キャンセル";const save=document.createElement("button");save.type="button";save.className="primary";save.textContent=editing?"変更を保存":"カードに追加";actions.append(cancel,save);box.append(heading,label,area,count,actions);overlay.append(box);document.body.append(overlay);
-    const dismiss=()=>overlay.remove();area.addEventListener("input",()=>count.textContent=`${area.value.length} / ${limit}`);close.addEventListener("click",dismiss);cancel.addEventListener("click",dismiss);overlay.addEventListener("click",e=>{if(e.target===overlay)dismiss()});save.addEventListener("click",()=>{const value=safeText(area.value,limit).trim();if(editing){state.cards[index].text=value;state.cards[index].type=cardType;status.textContent=cardLabel+"を修正しました。"}else{state.cards.push({type:cardType,text:value});status.textContent=cardLabel+"を追加しました。"}dismiss();render()});area.focus();area.setSelectionRange(area.value.length,area.value.length)
+  const editing=index!==null;
+  const cardType=editing?state.cards[index].type:newType;
+  const isLong=cardType==="longText";
+  const cardLabel=isLong?"テキストカード":"言葉カード";
+  const limit=isLong?300:50;
+  const overlay=document.createElement("div");
+  overlay.className="modal open";
+  overlay.setAttribute("role","dialog");
+  overlay.setAttribute("aria-modal","true");
+  overlay.setAttribute("aria-label",editing?cardLabel+"を修正":cardLabel+"をつくる");
+
+  const settings=editing
+    ? {...getDefaultTextSettings(),...(state.cards[index].settings||{})}
+    : getDefaultTextSettings();
+
+  const box=document.createElement("div");
+  box.className="modal-box";
+  box.style.width="min(480px,100%)";
+
+  const heading=document.createElement("div");
+  heading.className="modal-head";
+  const title=document.createElement("strong");
+  title.textContent=editing?cardLabel+"を修正":cardLabel+"をつくる";
+  const close=document.createElement("button");
+  close.type="button";
+  close.textContent="閉じる";
+  heading.append(title,close);
+
+  const label=document.createElement("label");
+  label.className="field-title";
+  label.textContent=isLong?"カードに載せる文章":"カードに載せる言葉";
+
+  const area=document.createElement("textarea");
+  area.maxLength=limit;
+  area.value=editing?state.cards[index].text:"";
+  area.placeholder=isLong
+    ?"ここに文章を入力してください。\n改行もできます（300字まで）。"
+    :"ここに言葉を入力してください（50字まで）。";
+  area.setAttribute("aria-label",label.textContent);
+  area.style.minHeight=isLong?"220px":"140px";
+
+  const count=document.createElement("div");
+  count.className="count";
+  count.textContent=`${area.value.length} / ${limit}`;
+
+  // カードごとの文字設定
+  const settingsTitle=document.createElement("strong");
+  settingsTitle.textContent="このカードの文字設定";
+  settingsTitle.style.display="block";
+  settingsTitle.style.marginTop="20px";
+
+  function addSetting(caption,control){
+    const wrap=document.createElement("label");
+    wrap.style.display="block";
+    wrap.style.marginTop="12px";
+    const name=document.createElement("span");
+    name.className="field-title";
+    name.textContent=caption;
+    name.style.display="block";
+    wrap.append(name,control);
+    control.style.width="100%";
+    control.style.marginTop="5px";
+    return wrap;
   }
+
+  function makeSelect(options,value){
+    const select=document.createElement("select");
+    select.style.padding="10px";
+    select.style.borderRadius="8px";
+    select.style.border="1px solid #ccc";
+    options.forEach(([text,val])=>{
+      const option=document.createElement("option");
+      option.textContent=text;
+      option.value=val;
+      select.append(option);
+    });
+    select.value=String(value);
+    return select;
+  }
+
+  const writing=makeSelect([
+    ["横書き","horizontal"],
+    ["縦書き","vertical"]
+  ],settings.writing);
+
+  const fontSize=document.createElement("input");
+  fontSize.type="number";
+  fontSize.min="8";
+  fontSize.max="60";
+  fontSize.value=settings.fontSize;
+
+  const fontWeight=makeSelect([
+    ["標準","400"],
+    ["太字","700"]
+  ],settings.fontWeight);
+
+  const alignment=makeSelect([
+    ["左寄せ","left"],
+    ["中央揃え","center"],
+    ["右寄せ","right"]
+  ],settings.alignment);
+
+  const font=makeSelect([
+    ["しっぽり明朝","Shippori Mincho"],
+    ["Noto Sans JP","Noto Sans JP"],
+    ["よもぎ","Yomogi"],
+    ["佑字肅","Yuji Syuku"],
+    ["佑字朴","Yuji Boku"],
+    ["解星オトミン","Kaisei Tokumin"],
+    ["さわらび明朝","Sawarabi Mincho"],
+    ["Zen Kurenaido","Zen Kurenaido"],
+    ["Murecho","Murecho"]
+  ],settings.font);
+
+  const actions=document.createElement("div");
+  actions.className="actions";
+  const cancel=document.createElement("button");
+  cancel.type="button";
+  cancel.className="secondary";
+  cancel.textContent="キャンセル";
+  const save=document.createElement("button");
+  save.type="button";
+  save.className="primary";
+  save.textContent=editing?"変更を保存":"カードに追加";
+  actions.append(cancel,save);
+
+  box.append(
+    heading,label,area,count,
+    settingsTitle,
+    addSetting("文字の向き",writing),
+    addSetting("文字サイズ（px）",fontSize),
+    addSetting("文字の太さ",fontWeight),
+    addSetting("文字の配置",alignment),
+    addSetting("フォント",font),
+    actions
+  );
+
+  overlay.append(box);
+  document.body.append(overlay);
+
+  const dismiss=()=>overlay.remove();
+
+  area.addEventListener("input",()=>{
+    count.textContent=`${area.value.length} / ${limit}`;
+  });
+  close.addEventListener("click",dismiss);
+  cancel.addEventListener("click",dismiss);
+  overlay.addEventListener("click",e=>{
+    if(e.target===overlay)dismiss();
+  });
+
+  save.addEventListener("click",()=>{
+    const value=safeText(area.value,limit).trim();
+
+    const cardSettings={
+      writing:writing.value,
+      fontSize:Math.max(8,Math.min(60,Number(fontSize.value)||24)),
+      fontWeight:fontWeight.value,
+      alignment:alignment.value,
+      font:font.value
+    };
+
+    if(editing){
+      state.cards[index].text=value;
+      state.cards[index].type=cardType;
+      state.cards[index].settings=cardSettings;
+      status.textContent=cardLabel+"を修正しました。";
+    }else{
+      state.cards.push({
+        type:cardType,
+        text:value,
+        settings:cardSettings
+      });
+      status.textContent=cardLabel+"を追加しました。";
+    }
+
+    dismiss();
+    render();
+  });
+
+  area.focus();
+  area.setSelectionRange(area.value.length,area.value.length);
+}
   function addTextCard(type="text"){if(state.cards.length>=Number($("#slotCount").value)){status.textContent="選択した枠数分のカードがすでにあります。";return}openTextEditor(null,type)}
   function editTextCard(index){if(state.cards[index]?.type!=="photo")openTextEditor(index)}
   function addPhotoCard(file){if(!file)return;if(state.cards.length>=Number($("#slotCount").value)){status.textContent="選択した枠数分のカードがすでにあります。";return}if(!file.type.startsWith("image/")){status.textContent="画像ファイルを選んでください。";return}const url=URL.createObjectURL(file);state.urls.push(url);state.cards.push({type:"photo",name:file.name,url});render()}
@@ -96,12 +276,20 @@
   function wrapText(ctx,text,maxWidth){const lines=[];for(const paragraph of text.split("\n")){let line="";for(const ch of paragraph){if(line&&ctx.measureText(line+ch).width>maxWidth){lines.push(line);line=ch}else line+=ch}lines.push(line)}return lines}
   async function waitFonts(){if(document.fonts?.ready)await document.fonts.ready}
   async function loadPhotoCache(cards=state.cards){const cache=new Map();for(const card of cards){if(card.type!=="photo"||cache.has(card.url))continue;const image=new Image();image.src=card.url;await image.decode();cache.set(card.url,image)}return cache}
-  function drawTextCanvas(ctx,card,x,y,w,h,scale=1){
-    const text=String(card.text||"").replace(/\r\n?/g,"\n"),vertical=$("#writing").value==="vertical",font=fonts[$("#fontSelect").value]||fonts["Shippori Mincho"],weight=$("#fontWeight").value,align=$("#textAlignment").value,palette=palettes[$("#palette").value]||palettes.ivory;
+ function drawTextCanvas(ctx,card,x,y,w,h,scale=1){
+    const text=String(card.text||"").replace(/\r\n?/g,"\n");
+    const settings={...getDefaultTextSettings(),...(card.settings||{})};
+    const vertical=settings.writing==="vertical";
+    const font=fonts[settings.font]||fonts["Shippori Mincho"];
+    const weight=settings.fontWeight||"400";
+    const align=settings.alignment||"center";
+    const palette=palettes[$("#palette").value]||palettes.ivory;
+
     // 余白を控えめにして、カード面を文字に広く使います。
     const padX=w*.045,padY=h*.045,tx=x+padX,ty=y+padY,tw=w-padX*2,th=h-padY*2,leading=card.type==="longText"?1.35:1.75,verticalPitch=card.type==="longText"?1.25:1;
-    let size=Math.max(8,Number($("#fontSize").value)*scale);
+    let size=Math.max(8,Number(settings.fontSize||24)*scale);
     let lines=[],columns=[];
+
     if(vertical){
       const paragraphs=text.split("\n");
       while(size>7){
@@ -118,15 +306,33 @@
         size--;
       }
     }else{
-      while(size>7){ctx.font=`${weight} ${size}px ${font}`;lines=text.split("\n").flatMap(paragraph=>wrapText(ctx,paragraph,tw));if(size+(lines.length-1)*size*leading<=th)break;size--}
+      while(size>7){
+        ctx.font=`${weight} ${size}px ${font}`;
+        lines=text.split("\n").flatMap(paragraph=>wrapText(ctx,paragraph,tw));
+        if(size+(lines.length-1)*size*leading<=th)break;
+        size--;
+      }
     }
-    ctx.fillStyle=palette.ink;ctx.textBaseline="middle";ctx.font=`${weight} ${size}px ${font}`;
+
+    ctx.fillStyle=palette.ink;
+    ctx.textBaseline="middle";
+    ctx.font=`${weight} ${size}px ${font}`;
+
     if(vertical){
-      ctx.textAlign="center";const lh=size*leading,total=columns.reduce((sum,column)=>sum+lh+(column.gapBefore?lh*.55:0),0);
+      ctx.textAlign="center";
+      const lh=size*leading,total=columns.reduce((sum,column)=>sum+lh+(column.gapBefore?lh*.55:0),0);
       let cursor=align==="left"?tx+lh/2+(total-lh)/2:align==="right"?tx+tw-lh/2:tx+(tw+total)/2-lh/2;
-      for(const column of columns){if(column.gapBefore)cursor-=lh*.55;for(let row=0;row<column.chars.length;row++)ctx.fillText(column.chars[row],cursor,ty+size*verticalPitch/2+row*size*verticalPitch,size*1.5);cursor-=lh}
+      for(const column of columns){
+        if(column.gapBefore)cursor-=lh*.55;
+        for(let row=0;row<column.chars.length;row++){
+          ctx.fillText(column.chars[row],cursor,ty+size*verticalPitch/2+row*size*verticalPitch,size*1.5);
+        }
+        cursor-=lh;
+      }
     }else{
-      const lineAdvance=size*leading,blockHeight=size+(lines.length-1)*lineAdvance,firstBaseline=ty+(th-blockHeight)/2+size/2;ctx.textAlign=align;const anchor=align==="left"?tx:align==="right"?tx+tw:tx+tw/2;
+      const lineAdvance=size*leading,blockHeight=size+(lines.length-1)*lineAdvance,firstBaseline=ty+(th-blockHeight)/2+size/2;
+      ctx.textAlign=align;
+      const anchor=align==="left"?tx:align==="right"?tx+tw:tx+tw/2;
       lines.forEach((line,i)=>ctx.fillText(line,anchor,firstBaseline+i*lineAdvance,tw));
     }
   }
@@ -152,7 +358,7 @@
     const xref=length;add(txt("xref\n0 "+objects.length+"\n0000000000 65535 f \n"));for(let i=1;i<objects.length;i++)add(txt(String(offsets[i]).padStart(10,"0")+" 00000 n \n"));add(txt("trailer\n<< /Size "+objects.length+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF"));
     const blob=new Blob(parts,{type:"application/pdf"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="記憶のアルバム.pdf";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);status.textContent=state.pages.length+"ページのPDFを端末に保存しました。";
   }
-  $("#addText").addEventListener("click",()=>addTextCard("text"));$("#addLongText").addEventListener("click",()=>addTextCard("longText"));$("#pageSelect").addEventListener("change",()=>setActivePage(Number($("#pageSelect").value)));$("#addPageButton").addEventListener("click",addPage);$("#deletePageButton").addEventListener("click",deletePage);$("#rowLayout").addEventListener("change",savePageSettings);$("#slotCount").addEventListener("change",savePageSettings);$("#exportPdfButton").addEventListener("click",exportPdf);$("#addPhoto").addEventListener("click",()=>$("#photoInput").click());$("#photoInput").addEventListener("change",e=>{[...e.target.files].forEach(addPhotoCard);e.target.value=""});$("#exportButton").addEventListener("click",exportPng);$("#ratio").addEventListener("change",()=>{screen.classList.toggle("landscape",$("#ratio").value==="landscape");renderFinalGrid()});$("#palette").addEventListener("change",applyPalette);$("#writing").addEventListener("change",()=>renderFinalGrid());$("#fontSelect").addEventListener("change",()=>renderFinalGrid());$("#fontWeight").addEventListener("change",()=>renderFinalGrid());$("#textAlignment").addEventListener("change",()=>renderFinalGrid());$("#fontSize").addEventListener("input",()=>{$("#fontSizeValue").textContent=$("#fontSize").value+"px";renderFinalGrid()});$("#rowLayout").addEventListener("change",()=>renderFinalGrid());$("#slotCount").addEventListener("change",()=>{const slots=Number($("#slotCount").value);if(state.cards.length>slots){$("#slotCount").value=String(state.cards.length);status.textContent="追加済みのカードより少ない枠数には変更できません。カードを削除してからお試しください。"}updateColumnOptions();render();});$("#closeModal").addEventListener("click",()=>$("#imageModal").classList.remove("open"));$("#imageModal").addEventListener("click",e=>{if(e.target===$("#imageModal"))$("#imageModal").classList.remove("open")});$("#clearButton").addEventListener("click",()=>{;const page=state.pages[state.activePage];page.cards.forEach(card=>{if(card.url){URL.revokeObjectURL(card.url);state.urls=state.urls.filter(url=>url!==card.url)}});page.cards=[];status.textContent="このページのカードを削除しました。";render()});render();applyPalette();document.fonts?.ready.then(()=>{renderFinalGrid();});window.addEventListener("resize",()=>{paintTextCanvases(grid);});
+  $("#addText").addEventListener("click",()=>addTextCard("text"));$("#addLongText").addEventListener("click",()=>addTextCard("longText"));$("#pageSelect").addEventListener("change",()=>setActivePage(Number($("#pageSelect").value)));$("#addPageButton").addEventListener("click",addPage);$("#deletePageButton").addEventListener("click",deletePage);$("#rowLayout").addEventListener("change",savePageSettings);$("#slotCount").addEventListener("change",savePageSettings);$("#exportPdfButton").addEventListener("click",exportPdf);$("#addPhoto").addEventListener("click",()=>$("#photoInput").click());$("#photoInput").addEventListener("change",e=>{[...e.target.files].forEach(addPhotoCard);e.target.value=""});$("#exportButton").addEventListener("click",exportPng);$("#ratio").addEventListener("change",()=>{screen.classList.toggle("landscape",$("#ratio").value==="landscape");renderFinalGrid()});$("#palette").addEventListener("change",applyPalette);$("#rowLayout").addEventListener("change",()=>renderFinalGrid());$("#slotCount").addEventListener("change",()=>{const slots=Number($("#slotCount").value);if(state.cards.length>slots){$("#slotCount").value=String(state.cards.length);status.textContent="追加済みのカードより少ない枠数には変更できません。カードを削除してからお試しください。"}updateColumnOptions();render();});$("#closeModal").addEventListener("click",()=>$("#imageModal").classList.remove("open"));$("#imageModal").addEventListener("click",e=>{if(e.target===$("#imageModal"))$("#imageModal").classList.remove("open")});$("#clearButton").addEventListener("click",()=>{;const page=state.pages[state.activePage];page.cards.forEach(card=>{if(card.url){URL.revokeObjectURL(card.url);state.urls=state.urls.filter(url=>url!==card.url)}});page.cards=[];status.textContent="このページのカードを削除しました。";render()});render();applyPalette();document.fonts?.ready.then(()=>{renderFinalGrid();});window.addEventListener("resize",()=>{paintTextCanvases(grid);});
 })();
 </script>
 <script>if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}))}</script>
